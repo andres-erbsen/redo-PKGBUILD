@@ -1,0 +1,176 @@
+--- ./redo/builder.py	(original)
++++ ./redo/builder.py	(refactored)
+@@ -54,7 +54,7 @@
+ def _try_stat(filename):
+     try:
+         return os.stat(filename)
+-    except OSError, e:
++    except OSError as e:
+         if e.errno == errno.ENOENT:
+             return None
+         else:
+@@ -90,7 +90,7 @@
+             if not dirty:
+                 # target doesn't need to be built; skip the whole task
+                 return self._after2(0)
+-        except ImmediateReturn, e:
++        except ImmediateReturn as e:
+             return self._after2(e.rv)
+ 
+         if vars.NO_OOB or dirty == True:
+@@ -137,7 +137,7 @@
+                 return self._after2(1)
+         unlink(self.tmpname1)
+         unlink(self.tmpname2)
+-        ffd = os.open(self.tmpname1, os.O_CREAT|os.O_RDWR|os.O_EXCL, 0666)
++        ffd = os.open(self.tmpname1, os.O_CREAT|os.O_RDWR|os.O_EXCL, 0o666)
+         close_on_exec(ffd, True)
+         self.f = os.fdopen(ffd, 'w+')
+         # this will run in the dofile's directory, so use only basenames here
+@@ -249,7 +249,7 @@
+             elif st1.st_size > 0:
+                 try:
+                     os.rename(self.tmpname1, t)
+-                except OSError, e:
++                except OSError as e:
+                     if e.errno == errno.ENOENT:
+                         unlink(t)
+                     else:
+--- ./redo/helpers.py	(original)
++++ ./redo/helpers.py	(refactored)
+@@ -14,7 +14,7 @@
+     """
+     try:
+         os.unlink(f)
+-    except OSError, e:
++    except OSError as e:
+         if e.errno == errno.ENOENT:
+             pass  # it doesn't exist, that's what you asked for
+ 
+--- ./redo/jwack.py	(original)
++++ ./redo/jwack.py	(refactored)
+@@ -59,7 +59,7 @@
+         signal.alarm(1)  # emergency fallback
+         try:
+             b = os.read(_fds[0], 1)
+-        except OSError, e:
++        except OSError as e:
+             if e.errno in (errno.EAGAIN, errno.EINTR):
+                 # interrupted or it was nonblocking
+                 return ''  # try again
+@@ -90,7 +90,7 @@
+         try:
+             fcntl.fcntl(a, fcntl.F_GETFL)
+             fcntl.fcntl(b, fcntl.F_GETFL)
+-        except IOError, e:
++        except IOError as e:
+             if e.errno == errno.EBADF:
+                 raise ValueError('broken --jobserver-fds from make; prefix your Makefile rule with a "+"')
+             else:
+@@ -107,7 +107,7 @@
+ 
+ 
+ def wait(want_token):
+-    rfds = _waitfds.keys()
++    rfds = list(_waitfds.keys())
+     if _fds and want_token:
+         rfds.append(_fds[0])
+     assert(rfds)
+@@ -196,7 +196,7 @@
+     if n:
+         _debug('%d tokens left in force_return_tokens\n' % n)
+     _debug('returning %d tokens\n' % n)
+-    for k in _waitfds.keys():
++    for k in list(_waitfds.keys()):
+         del _waitfds[k]
+     if _fds:
+         _release(n)
+--- ./redo/options.py	(original)
++++ ./redo/options.py	(refactored)
+@@ -237,12 +237,12 @@
+         """
+         try:
+             (flags,extra) = self.optfunc(args, self._shortopts, self._longopts)
+-        except getopt.GetoptError, e:
++        except getopt.GetoptError as e:
+             self.fatal(e)
+ 
+         opt = OptDict()
+ 
+-        for k,v in self._defaults.iteritems():
++        for k,v in self._defaults.items():
+             k = self._aliases[k]
+             opt[k] = v
+ 
+@@ -266,6 +266,6 @@
+                 else:
+                     v = _intify(v)
+             opt[k] = v
+-        for (f1,f2) in self._aliases.iteritems():
++        for (f1,f2) in self._aliases.items():
+             opt[f1] = opt._opts.get(f2)
+         return (opt,flags,extra)
+--- ./redo/redo-ood.py	(original)
++++ ./redo/redo-ood.py	(refactored)
+@@ -25,4 +25,4 @@
+     if f.is_generated and f.read_stamp() != state.STAMP_MISSING:
+         if deps.isdirty(f, depth='', max_changed=vars.RUNID,
+                         is_checked=is_checked, set_checked=set_checked):
+-            print f.nicename()
++            print (f.nicename())
+--- ./redo/redo-sources.py	(original)
++++ ./redo/redo-sources.py	(refactored)
+@@ -15,4 +15,4 @@
+     if f.name.startswith('//'):
+         continue  # special name, ignore
+     if not f.is_generated and f.read_stamp() != state.STAMP_MISSING:
+-        print f.nicename()
++        print (f.nicename())
+--- ./redo/redo-targets.py	(original)
++++ ./redo/redo-targets.py	(refactored)
+@@ -13,4 +13,4 @@
+ 
+ for f in state.files():
+     if f.is_generated and f.read_stamp() != state.STAMP_MISSING:
+-        print f.nicename()
++        print (f.nicename())
+--- ./redo/redo.py	(original)
++++ ./redo/redo.py	(refactored)
+@@ -24,7 +24,7 @@
+ 
+ if opt.version:
+     import version
+-    print version.TAG
++    print (version.TAG)
+     sys.exit(0)
+ if opt.debug:
+     os.environ['REDO_DEBUG'] = str(opt.debug or 0)
+--- ./redo/state.py	(original)
++++ ./redo/state.py	(refactored)
+@@ -29,7 +29,7 @@
+     dbfile = '%s/db.sqlite3' % dbdir
+     try:
+         os.mkdir(dbdir)
+-    except OSError, e:
++    except OSError as e:
+         if e.errno == errno.EEXIST:
+             pass  # if it exists, that's okay
+         else:
+@@ -305,7 +305,7 @@
+         self.owned = False
+         self.fid = fid
+         self.lockfile = os.open(os.path.join(vars.BASE, '.redo/lock.%d' % fid),
+-                                os.O_RDWR | os.O_CREAT, 0666)
++                                os.O_RDWR | os.O_CREAT, 0o666)
+         close_on_exec(self.lockfile, True)
+         assert(_locks.get(fid,0) == 0)
+         _locks[fid] = 1
+@@ -320,7 +320,7 @@
+         assert(not self.owned)
+         try:
+             fcntl.lockf(self.lockfile, fcntl.LOCK_EX|fcntl.LOCK_NB, 0, 0)
+-        except IOError, e:
++        except IOError as e:
+             if e.errno in (errno.EAGAIN, errno.EACCES):
+                 pass  # someone else has it locked
+             else:
